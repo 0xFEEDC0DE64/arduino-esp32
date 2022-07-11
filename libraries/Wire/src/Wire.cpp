@@ -31,6 +31,7 @@ extern "C" {
 #include <esp_log.h>
 #include <utility>
 #include <fmt/core.h>
+#include <futurecpp.h>
 
 #include "esp32-hal-i2c.h"
 #include "esp32-hal-log.h"

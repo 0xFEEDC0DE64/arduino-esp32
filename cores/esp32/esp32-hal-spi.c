@@ -14,6 +14,10 @@
 
 #include <string.h>
 
+#include <driver/gpio.h>
+#include <esp_log.h>
+#define TAG "ARDUINO"
+
 #include "esp32-hal-spi.h"
 #include "esp32-hal.h"
 #include "freertos/FreeRTOS.h"
@@ -45,7 +49,6 @@
 #include "rom/gpio.h"
 #include "esp_intr.h"
 #endif
-#include "esp32-hal-gpio.h"
 #include "esp32-hal-matrix.h"
 #include "esp32-hal-cpu.h"
 
@@ -146,7 +149,21 @@ void spiAttachSCK(spi_t * spi, int8_t sck)
         }
 #endif
     }
-    pinMode(sck, OUTPUT);
+
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = 1ULL << sck,
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
+
     pinMatrixOutAttach(sck, SPI_CLK_IDX(spi->num), false, false);
 }
 
@@ -174,7 +191,21 @@ void spiAttachMISO(spi_t * spi, int8_t miso)
 #endif
     }
     SPI_MUTEX_LOCK();
-    pinMode(miso, INPUT);
+
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << miso),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
+
     pinMatrixInAttach(miso, SPI_MISO_IDX(spi->num), false);
     SPI_MUTEX_UNLOCK();
 }
@@ -202,7 +233,21 @@ void spiAttachMOSI(spi_t * spi, int8_t mosi)
         }
 #endif
     }
-    pinMode(mosi, OUTPUT);
+
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << mosi),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
+
     pinMatrixOutAttach(mosi, SPI_MOSI_IDX(spi->num), false, false);
 }
 
@@ -230,7 +275,19 @@ void spiDetachSCK(spi_t * spi, int8_t sck)
 #endif
     }
     pinMatrixOutDetach(sck, false, false);
-    pinMode(sck, INPUT);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << sck),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
 }
 
 void spiDetachMISO(spi_t * spi, int8_t miso)
@@ -257,7 +314,19 @@ void spiDetachMISO(spi_t * spi, int8_t miso)
 #endif
     }
     pinMatrixInDetach(SPI_MISO_IDX(spi->num), false, false);
-    pinMode(miso, INPUT);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << miso),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
 }
 
 void spiDetachMOSI(spi_t * spi, int8_t mosi)
@@ -284,7 +353,19 @@ void spiDetachMOSI(spi_t * spi, int8_t mosi)
 #endif
     }
     pinMatrixOutDetach(mosi, false, false);
-    pinMode(mosi, INPUT);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << mosi),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
 }
 
 void spiAttachSS(spi_t * spi, uint8_t cs_num, int8_t ss)
@@ -314,7 +395,19 @@ void spiAttachSS(spi_t * spi, uint8_t cs_num, int8_t ss)
         }
 #endif
     }
-    pinMode(ss, OUTPUT);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << ss),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
     pinMatrixOutAttach(ss, SPI_SS_IDX(spi->num, cs_num), false, false);
     spiEnableSSPins(spi, (1 << cs_num));
 }
@@ -343,7 +436,19 @@ void spiDetachSS(spi_t * spi, int8_t ss)
 #endif
     }
     pinMatrixOutDetach(ss, false, false);
-    pinMode(ss, INPUT);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << ss),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
 }
 
 void spiEnableSSPins(spi_t * spi, uint8_t cs_mask)

@@ -1,6 +1,5 @@
 set(CORE_SRCS
   cores/esp32/esp32-hal-cpu.c
-  cores/esp32/esp32-hal-gpio.c
   cores/esp32/esp32-hal-i2c.c
   cores/esp32/esp32-hal-matrix.c
   cores/esp32/esp32-hal-misc.c
@@ -22,7 +21,7 @@ set(includedirs
 
 set(srcs ${CORE_SRCS} ${LIBRARY_SRCS} ${BLE_SRCS})
 set(requires spi_flash mbedtls wifi_provisioning driver)
-set(priv_requires nvs_flash bootloader_support espcpputils fmt)
+set(priv_requires nvs_flash bootloader_support espcpputils goefmt)
 
 idf_component_register(INCLUDE_DIRS ${includedirs} PRIV_INCLUDE_DIRS ${priv_includes} SRCS ${srcs} REQUIRES ${requires} PRIV_REQUIRES ${priv_requires})
 set_property(TARGET ${COMPONENT_LIB} PROPERTY CXX_STANDARD 23)

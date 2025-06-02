@@ -27,7 +27,6 @@
 #include "esp_attr.h"
 #include "esp32-hal-cpu.h" // cpu clock change support 31DEC2018
 #include "esp32-hal-log.h"
-#include "esp32-hal-gpio.h"
 #include "esp32-hal-matrix.h"
 #include "esp32-hal-misc.h"
 
@@ -44,6 +43,8 @@
 #include "rom/ets_sys.h"
 #endif
 #include "driver/gpio.h"
+#include <esp_log.h>
+#define TAG "ARDUINO"
 
 
 #if CONFIG_IDF_TARGET_ESP32
@@ -1432,28 +1433,52 @@ static bool i2cCheckLineState(int8_t sda, int8_t scl){
         return false;//return false since there is nothing to do
     }
     // if the bus is not 'clear' try the cycling SCL until SDA goes High or 9 cycles
-    digitalWrite(sda, HIGH);
-    digitalWrite(scl, HIGH);
-    pinMode(sda, PULLUP|OPEN_DRAIN|INPUT);
-    pinMode(scl, PULLUP|OPEN_DRAIN|OUTPUT);
+    gpio_set_level(sda, 1);
+    gpio_set_level(scl, 1);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = 1ULL << sda,
+            .mode = GPIO_MODE_INPUT_OUTPUT_OD,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
 
-    if(!digitalRead(sda) || !digitalRead(scl)) { // bus in busy state
-        log_w("invalid state sda(%d)=%d, scl(%d)=%d", sda, digitalRead(sda), scl, digitalRead(scl));
-        digitalWrite(scl, HIGH);
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = 1ULL << scl,
+            .mode = GPIO_MODE_OUTPUT_OD,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
+
+    if(!gpio_get_level(sda) || !gpio_get_level(scl)) { // bus in busy state
+        log_w("invalid state sda(%d)=%d, scl(%d)=%d", sda, gpio_get_level(sda), scl, gpio_get_level(scl));
+        gpio_set_level(scl, 1);
         for(uint8_t a=0; a<9; a++) {
             delayMicroseconds(5);
-            digitalWrite(scl, LOW);
+            gpio_set_level(scl, 0);
             delayMicroseconds(5);
-            digitalWrite(scl, HIGH);
-            if(digitalRead(sda)){ // bus recovered
+            gpio_set_level(scl, 1);
+            if(gpio_get_level(sda)){ // bus recovered
                 log_d("Recovered after %d Cycles",a+1);
                 break;
             }
         }
     }
 
-    if(!digitalRead(sda) || !digitalRead(scl)) { // bus in busy state
-        log_e("Bus Invalid State, TwoWire() Can't init sda=%d, scl=%d",digitalRead(sda),digitalRead(scl));
+    if(!gpio_get_level(sda) || !gpio_get_level(scl)) { // bus in busy state
+        log_e("Bus Invalid State, TwoWire() Can't init sda=%d, scl=%d",gpio_get_level(sda),gpio_get_level(scl));
         return false; // bus is busy
     }
     return true;
@@ -1464,8 +1489,20 @@ i2c_err_t i2cAttachSCL(i2c_t * i2c, int8_t scl)
     if(i2c == NULL) {
         return I2C_ERROR_DEV;
     }
-    digitalWrite(scl, HIGH);
-    pinMode(scl, OPEN_DRAIN | PULLUP | INPUT | OUTPUT);
+    gpio_set_level(scl, 1);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << scl),
+            .mode = GPIO_MODE_INPUT_OUTPUT_OD,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
     pinMatrixOutAttach(scl, I2C_SCL_IDX(i2c->num), false, false);
     pinMatrixInAttach(scl, I2C_SCL_IDX(i2c->num), false);
     return I2C_ERROR_OK;
@@ -1478,7 +1515,19 @@ i2c_err_t i2cDetachSCL(i2c_t * i2c, int8_t scl)
     }
     pinMatrixOutDetach(scl, false, false);
     pinMatrixInDetach(I2C_SCL_IDX(i2c->num), false, false);
-    pinMode(scl, INPUT | PULLUP);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << scl),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
     return I2C_ERROR_OK;
 }
 
@@ -1487,8 +1536,20 @@ i2c_err_t i2cAttachSDA(i2c_t * i2c, int8_t sda)
     if(i2c == NULL) {
         return I2C_ERROR_DEV;
     }
-    digitalWrite(sda, HIGH);
-    pinMode(sda, OPEN_DRAIN | PULLUP | INPUT | OUTPUT );
+    gpio_set_level(sda, 1);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << sda),
+            .mode = GPIO_MODE_INPUT_OUTPUT_OD,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
     pinMatrixOutAttach(sda, I2C_SDA_IDX(i2c->num), false, false);
     pinMatrixInAttach(sda, I2C_SDA_IDX(i2c->num), false);
     return I2C_ERROR_OK;
@@ -1501,7 +1562,19 @@ i2c_err_t i2cDetachSDA(i2c_t * i2c, int8_t sda)
     }
     pinMatrixOutDetach(sda, false, false);
     pinMatrixInDetach(I2C_SDA_IDX(i2c->num), false, false);
-    pinMode(sda, INPUT | PULLUP);
+    {
+        const gpio_config_t config = {
+            .pin_bit_mask = (1ULL << sda),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+
+        const int result = gpio_config(&config);
+        if (result != ESP_OK)
+            ESP_LOGE(TAG, "gpio_config() failed %s", esp_err_to_name(result));
+    }
     return I2C_ERROR_OK;
 }
 
